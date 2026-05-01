@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+# Windows build spec — outputs dist\natnest.exe
 
 a = Analysis(
     ['main.py'],
@@ -12,6 +13,7 @@ a = Analysis(
         'src.watchdog',
         'src.updater',
         'src.autostart',
+        'winreg',
     ],
     hookspath=[],
     hooksconfig={},
