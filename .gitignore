@@ -1,0 +1,56 @@
+# Docker
+certs/
+init-db/01-init.sql
+.config/
+.vscode
+.claude/
+.gemini/
+
+# SSH Keys (Critical Security)
+ssh_host_key
+ssh_host_key_ed25519
+test1_id_rsa
+test1_id_rsa.pub
+test1_ed25519
+test1_ed25519.pub
+tunnel_server/ssh_host_key
+tunnel_server/ssh_host_key_ed25519
+
+# Secrets
+certbot/cloudflare.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+dist/
+build/
+*.egg-info/
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# AI Tools
+.claude/
+.gemini/
+
+# Session files
+session_summary.txt
+
+# Build artifacts
+www/bin/macos/
+
+.env
+.gstack/
