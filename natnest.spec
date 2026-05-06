@@ -1,18 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+
 a = Analysis(
     ['main.py'],
-    pathex=['.'],
+    pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[
-        'src.config',
-        'src.auth',
-        'src.tunnel',
-        'src.watchdog',
-        'src.updater',
-        'src.autostart',
-    ],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
