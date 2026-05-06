@@ -5,16 +5,22 @@ from pathlib import Path
 
 
 def _read_version() -> str:
-    # Frozen binary: VERSION file is bundled next to the executable
     if getattr(sys, "frozen", False):
-        base = Path(sys.executable).parent
+        # _MEIPASS: PyInstaller's extraction dir (datas live here)
+        # Fallback: directory containing the executable
+        candidates = [
+            Path(getattr(sys, "_MEIPASS", "")),
+            Path(sys.executable).parent,
+        ]
     else:
-        base = Path(__file__).parent.parent
-    version_file = base / "VERSION"
-    try:
-        return version_file.read_text(encoding="utf-8").strip()
-    except OSError:
-        return "0.0.0"
+        candidates = [Path(__file__).parent.parent]
+
+    for base in candidates:
+        try:
+            return (base / "VERSION").read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+    return "0.0.0"
 
 
 class Config:
