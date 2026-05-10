@@ -45,6 +45,7 @@ yarn-debug.log
 # AI Tools
 .claude/
 .gemini/
+CLAUDE.md
 
 # Session files
 session_summary.txt
