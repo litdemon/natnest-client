@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# Cross-compile natnest for linux/arm64 via Docker buildx + QEMU.
+# Usage (from repo root):
+#   docker buildx build --platform linux/arm64 \
+#     --file Dockerfile.build_linux_arm64 \
+#     --output type=local,dest=./dist-arm64 .
+# Output: ./dist-arm64/natnest
+
+FROM --platform=linux/arm64 python:3.11-slim AS builder
+
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt pyinstaller
+
+COPY . .
+RUN pyinstaller natnest.spec --clean
+
+FROM scratch
+COPY --from=builder /build/dist/natnest /natnest

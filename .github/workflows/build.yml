@@ -1,14 +1,13 @@
-name: Build & Release
+name: CI
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
 
 jobs:
-  # ── 1. 테스트 (Ubuntu, 빠름) ──────────────────────────────────────────
+  # ── 1. 테스트 ─────────────────────────────────────────────────────────
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -74,48 +73,15 @@ jobs:
       - name: Build natnest
         run: pyinstaller natnest.spec --clean
 
-      # VERSION을 바이너리 옆에 복사 (frozen binary가 읽을 수 있도록)
       - name: Bundle VERSION alongside binary
         run: cp VERSION dist/VERSION
 
       - name: Verify binary
         run: ./dist/natnest --version
 
-      # 배포용 tarball 생성 (binary + VERSION 함께)
-      - name: Package tarball
-        run: tar -czf natnest-linux.tar.gz -C dist natnest VERSION
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: natnest-linux
-          path: natnest-linux.tar.gz
+          path: dist/natnest
           retention-days: 7
-
-  # ── 4. GitHub Release (태그 v* 푸시 시에만) ──────────────────────────
-  release:
-    name: Create GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-windows, build-linux]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: natnest-windows
-          path: artifacts/
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: natnest-linux
-          path: artifacts/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: NatNest ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            artifacts/natnest.exe
-            artifacts/natnest-linux.tar.gz

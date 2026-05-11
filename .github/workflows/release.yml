@@ -1,0 +1,221 @@
+name: Build and Upload Binary
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ── 0. 테스트 ─────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: pip install requests
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  # ── 1. Linux amd64 ────────────────────────────────────────────────────
+  build-linux-amd64:
+    name: Build linux/amd64
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build
+        run: pyinstaller natnest.spec --clean
+
+      - name: Bundle VERSION alongside binary
+        run: cp VERSION dist/VERSION
+
+      - name: Verify binary
+        run: ./dist/natnest --version
+
+      - name: Upload to natnest.site
+        run: |
+          curl -f -X POST https://natnest.site/api/admin/upload-binary \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+            -F "os=linux" \
+            -F "arch=amd64" \
+            -F "binary=@dist/natnest"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: natnest-linux-amd64
+          path: dist/natnest
+          retention-days: 7
+
+  # ── 2. Linux arm64 (QEMU 크로스 컴파일) ──────────────────────────────
+  build-linux-arm64:
+    name: Build linux/arm64
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build arm64 binary via Docker
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --file Dockerfile.build_linux_arm64 \
+            --output type=local,dest=./dist-arm64 \
+            .
+
+      - name: Upload to natnest.site
+        run: |
+          curl -f -X POST https://natnest.site/api/admin/upload-binary \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+            -F "os=linux" \
+            -F "arch=arm64" \
+            -F "binary=@dist-arm64/natnest"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: natnest-linux-arm64
+          path: dist-arm64/natnest
+          retention-days: 7
+
+  # ── 3. macOS amd64 ────────────────────────────────────────────────────
+  build-macos-amd64:
+    name: Build macos/amd64
+    needs: test
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build
+        run: pyinstaller natnest.spec --clean
+
+      - name: Bundle VERSION alongside binary
+        run: cp VERSION dist/VERSION
+
+      - name: Verify binary
+        run: ./dist/natnest --version
+
+      - name: Upload to natnest.site
+        run: |
+          curl -f -X POST https://natnest.site/api/admin/upload-binary \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+            -F "os=macos" \
+            -F "arch=amd64" \
+            -F "binary=@dist/natnest"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: natnest-macos-amd64
+          path: dist/natnest
+          retention-days: 7
+
+  # ── 4. Windows amd64 ──────────────────────────────────────────────────
+  build-windows-amd64:
+    name: Build windows/amd64
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build
+        run: pyinstaller natnest_win.spec --clean
+
+      - name: Verify binary
+        run: dist\natnest.exe --version
+
+      - name: Upload to natnest.site
+        run: |
+          curl -f -X POST https://natnest.site/api/admin/upload-binary `
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" `
+            -F "os=windows" `
+            -F "arch=amd64" `
+            -F "binary=@dist/natnest.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: natnest-windows-amd64
+          path: dist/natnest.exe
+          retention-days: 7
+
+  # ── 5. GitHub Release ─────────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [build-linux-amd64, build-linux-arm64, build-macos-amd64, build-windows-amd64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: natnest-linux-amd64
+          path: artifacts/linux-amd64/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: natnest-linux-arm64
+          path: artifacts/linux-arm64/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: natnest-macos-amd64
+          path: artifacts/macos-amd64/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: natnest-windows-amd64
+          path: artifacts/windows-amd64/
+
+      - name: Rename artifacts
+        run: |
+          cp artifacts/linux-amd64/natnest  artifacts/natnest-linux-amd64
+          cp artifacts/linux-arm64/natnest  artifacts/natnest-linux-arm64
+          cp artifacts/macos-amd64/natnest  artifacts/natnest-macos-amd64
+          cp artifacts/windows-amd64/natnest.exe artifacts/natnest-windows-amd64.exe
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NatNest ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/natnest-linux-amd64
+            artifacts/natnest-linux-arm64
+            artifacts/natnest-macos-amd64
+            artifacts/natnest-windows-amd64.exe
