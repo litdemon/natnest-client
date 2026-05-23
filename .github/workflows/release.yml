@@ -103,7 +103,7 @@ jobs:
   build-macos-amd64:
     name: Build macos/amd64
     needs: test
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
